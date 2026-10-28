@@ -13,13 +13,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Unpack YesminAI.zip
+      - name: Unpack Project Safely
         run: |
-          unzip -o YesminAI.zip
-          if [ -d "YesminAI" ]; then
-            shopt -s dotglob
-            mv YesminAI/* .
-          fi
+          shopt -s nullglob dotglob
+          for z in *.zip; do
+            unzip -o "$z"
+          done
+          for d in YesminAI*/; do
+            if [ -d "$d" ]; then
+              cp -rf "$d"* . || true
+              rm -rf "$d"
+            fi
+          done
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -29,7 +34,12 @@ jobs:
           cache: gradle
 
       - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+        run: |
+          if [ -f "gradlew" ]; then
+            chmod +x gradlew
+          else
+            find . -name "gradlew" -exec chmod +x {} +
+          fi
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug
@@ -38,4 +48,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: YesminAI-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: "**/build/outputs/apk/debug/*.apk"
